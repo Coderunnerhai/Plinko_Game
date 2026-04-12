@@ -21,24 +21,27 @@ mongoose.connection.once("open", () => {
 });
 
 // ✅ COMMIT
-app.post("/api/rounds/commit", async (req, res) => {
-  const serverSeed = crypto.randomBytes(32).toString("hex");
-  const nonce = crypto.randomUUID(); // ✅ FIXED
+app.post("/api/rounds/commit", (req, res) => {
+  try {
+    const serverSeed = crypto.randomBytes(32).toString("hex");
+    const nonce = Date.now().toString();
 
-  const commitHex = sha256(`${serverSeed}:${nonce}`);
+    const commitHex = sha256(`${serverSeed}:${nonce}`);
+    const roundId = crypto.randomUUID();
 
-  const round = await Round.create({
-    serverSeed,
-    nonce,
-    commitHex,
-    status: "CREATED",
-  });
+    rounds[roundId] = {
+      serverSeed,
+      nonce,
+      commitHex,
+      status: "CREATED",
+    };
 
-  res.json({
-    roundId: round._id,
-    commitHex,
-    nonce,
-  });
+    res.json({ roundId, commitHex, nonce });
+
+  } catch (err) {
+    console.error("❌ COMMIT ERROR:", err);
+    res.status(500).json({ error: err.message });
+  }
 });
 
 // ✅ VERIFY ENDPOINT
