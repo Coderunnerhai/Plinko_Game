@@ -70,11 +70,18 @@ app.get("/api/verify", (req, res) => {
 });
 
 // ✅ START
-app.post("/api/rounds/:id/start", async (req, res) => {
-  const round = await Round.findById(req.params.id);
-  if (!round) return res.status(404).send("Round not found");
+app.post("/api/rounds/:id/start", (req, res) => {
+  const round = rounds[req.params.id];
 
-  const { clientSeed, dropColumn, betCents } = req.body;
+  if (!round) {
+    return res.status(404).json({ error: "Round not found" });
+  }
+
+  const { clientSeed, dropColumn } = req.body;
+
+  if (!clientSeed || dropColumn === undefined) {
+    return res.status(400).json({ error: "Missing data" });
+  }
 
   const result = runEngine({
     serverSeed: round.serverSeed,
@@ -83,17 +90,15 @@ app.post("/api/rounds/:id/start", async (req, res) => {
     dropColumn,
   });
 
-  round.clientSeed = clientSeed;
-  round.combinedSeed = result.combinedSeed;
-  round.pegMapHash = result.pegMapHash;
-  round.pathJson = result.path;
-  round.binIndex = result.binIndex;
-  round.rows = 12;
-  round.dropColumn = dropColumn;
-  round.betCents = betCents;
-  round.status = "STARTED";
-
-  await round.save();
+  Object.assign(round, {
+    clientSeed,
+    combinedSeed: result.combinedSeed,
+    pegMapHash: result.pegMapHash,
+    pathJson: result.path,
+    binIndex: result.binIndex,
+    rows: 12,
+    status: "STARTED",
+  });
 
   res.json({
     pegMapHash: result.pegMapHash,
@@ -102,14 +107,14 @@ app.post("/api/rounds/:id/start", async (req, res) => {
 });
 
 // ✅ REVEAL
-app.post("/api/rounds/:id/reveal", async (req, res) => {
-  const round = await Round.findById(req.params.id);
-  if (!round) return res.status(404).send("Round not found");
+app.post("/api/rounds/:id/reveal", (req, res) => {
+  const round = rounds[req.params.id];
+
+  if (!round) {
+    return res.status(404).json({ error: "Round not found" });
+  }
 
   round.status = "REVEALED";
-  round.revealedAt = new Date();
-
-  await round.save();
 
   res.json({
     serverSeed: round.serverSeed,
