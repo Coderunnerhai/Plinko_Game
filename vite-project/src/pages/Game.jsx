@@ -6,6 +6,7 @@ import axios from "axios";
 export default function Game() {
 
     const [column, setColumn] = useState(6);
+    const BASE_URL = import.meta.env.VITE_API_URL;
     
   const [round, setRound] = useState(null);
   console.log("Game rendering", round);
@@ -14,25 +15,25 @@ export default function Game() {
   console.log("START GAME RUNNING 🚀", clientSeed, dropColumn); // 👈 ADD
 
   try {
-    const commit = await axios.post("http://localhost:5000/api/rounds/commit");
+    const commit = await axios.post(`${BASE_URL}/api/rounds/commit`);
     console.log("Commit:", commit.data);
 
     await axios.post(
-      `http://localhost:5000/api/rounds/${commit.data.roundId}/start`,
-      {
-        clientSeed,
-        dropColumn,
-        betCents: 100,
-      }
-    );
+  `${BASE_URL}/api/rounds/${commit.data.roundId}/start`,
+  {
+    clientSeed,
+    dropColumn,
+    betCents: 100,
+  }
+);
 
     await axios.post(
-      `http://localhost:5000/api/rounds/${commit.data.roundId}/reveal`
-    );
+  `${BASE_URL}/api/rounds/${commit.data.roundId}/reveal`
+);
 
     const full = await axios.get(
-      `http://localhost:5000/api/rounds/${commit.data.roundId}`
-    );
+  `${BASE_URL}/api/rounds/${commit.data.roundId}`
+);
 
     console.log("FULL DATA:", full.data); // 👈
 
