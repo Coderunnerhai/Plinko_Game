@@ -14,11 +14,11 @@ export default function Game() {
   console.log("START GAME RUNNING 🚀", clientSeed, dropColumn); // 👈 ADD
 
   try {
-    const commit = await axios.post("http://localhost:5100/api/rounds/commit");
+    const commit = await axios.post("http://localhost:5000/api/rounds/commit");
     console.log("Commit:", commit.data);
 
     await axios.post(
-      `http://localhost:5100/api/rounds/${commit.data.roundId}/start`,
+      `http://localhost:5000/api/rounds/${commit.data.roundId}/start`,
       {
         clientSeed,
         dropColumn,
@@ -27,11 +27,11 @@ export default function Game() {
     );
 
     await axios.post(
-      `http://localhost:5100/api/rounds/${commit.data.roundId}/reveal`
+      `http://localhost:5000/api/rounds/${commit.data.roundId}/reveal`
     );
 
     const full = await axios.get(
-      `http://localhost:5100/api/rounds/${commit.data.roundId}`
+      `http://localhost:5000/api/rounds/${commit.data.roundId}`
     );
 
     console.log("FULL DATA:", full.data); // 👈
