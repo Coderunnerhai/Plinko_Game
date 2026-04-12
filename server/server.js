@@ -10,15 +10,18 @@ import Round from "./models/Round.js";
 dotenv.config();
 
 const app = express();
+const rounds = {}; // 👈 ADD THIS - in-memory storage
 
 app.use(cors());
 app.use(express.json());
 
-mongoose.connect(process.env.MONGO_URI);
-
-mongoose.connection.once("open", () => {
-  console.log("✅ MongoDB connected");
-});
+// Only connect to MongoDB if you're using it
+if (process.env.MONGO_URI) {
+  mongoose.connect(process.env.MONGO_URI);
+  mongoose.connection.once("open", () => {
+    console.log("✅ MongoDB connected");
+  });
+}
 
 process.on("uncaughtException", (err) => {
   console.error("🔥 UNCAUGHT EXCEPTION:", err);
@@ -28,24 +31,22 @@ process.on("unhandledRejection", (err) => {
   console.error("🔥 UNHANDLED REJECTION:", err);
 });
 
+// ✅ TEST ROUTE (put this first for quick testing)
+app.get("/test", (req, res) => {
+  console.log("✅ TEST ROUTE HIT");
+  res.json({ message: "Server working", routes: ["/api/rounds/commit", "/api/verify", "/api/rounds/:id/start"] });
+});
+
 // ✅ COMMIT
 app.post("/api/rounds/commit", (req, res) => {
   try {
     console.log("👉 COMMIT ROUTE HIT");
-
-    // 🔐 generate server seed
+    
     const serverSeed = crypto.randomBytes(32).toString("hex");
-
-    // 🔢 nonce
     const nonce = Date.now().toString();
-
-    // 🔐 commit hash
     const commitHex = sha256(`${serverSeed}:${nonce}`);
-
-    // ✅ FIX: use randomBytes instead of randomUUID
     const roundId = crypto.randomBytes(16).toString("hex");
 
-    // 🧠 store round (in-memory)
     rounds[roundId] = {
       serverSeed,
       nonce,
@@ -54,8 +55,8 @@ app.post("/api/rounds/commit", (req, res) => {
     };
 
     console.log("✅ ROUND CREATED:", roundId);
+    console.log("📦 Current rounds:", Object.keys(rounds));
 
-    // ✅ send response
     res.status(200).json({
       roundId,
       commitHex,
@@ -64,7 +65,6 @@ app.post("/api/rounds/commit", (req, res) => {
 
   } catch (err) {
     console.error("❌ COMMIT ERROR:", err);
-
     res.status(500).json({
       error: "Commit failed",
       message: err.message,
@@ -72,24 +72,15 @@ app.post("/api/rounds/commit", (req, res) => {
   }
 });
 
-app.get("/test", (req, res) => {
-  console.log("✅ TEST ROUTE HIT");
-  res.json({ message: "Server working" });
-});
-
 // ✅ VERIFY ENDPOINT
 app.get("/api/verify", (req, res) => {
   const { serverSeed, clientSeed, nonce, dropColumn } = req.query;
 
-  // 🔒 validation
   if (!serverSeed || !clientSeed || !nonce || dropColumn === undefined) {
     return res.status(400).json({ error: "Missing params" });
   }
 
-  // 🔐 recompute commit
   const commitHex = sha256(`${serverSeed}:${nonce}`);
-
-  // 🎯 recompute full engine
   const result = runEngine({
     serverSeed,
     clientSeed,
@@ -107,43 +98,53 @@ app.get("/api/verify", (req, res) => {
 
 // ✅ START
 app.post("/api/rounds/:id/start", (req, res) => {
+  console.log("👉 START ROUTE HIT for ID:", req.params.id);
+  
   const round = rounds[req.params.id];
 
   if (!round) {
+    console.log("❌ Round not found. Available:", Object.keys(rounds));
     return res.status(404).json({ error: "Round not found" });
   }
 
-  const { clientSeed, dropColumn } = req.body;
+  const { clientSeed, dropColumn, betCents } = req.body;
 
   if (!clientSeed || dropColumn === undefined) {
-    return res.status(400).json({ error: "Missing data" });
+    return res.status(400).json({ error: "Missing clientSeed or dropColumn" });
   }
 
-  const result = runEngine({
-    serverSeed: round.serverSeed,
-    clientSeed,
-    nonce: round.nonce,
-    dropColumn,
-  });
+  try {
+    const result = runEngine({
+      serverSeed: round.serverSeed,
+      clientSeed,
+      nonce: round.nonce,
+      dropColumn,
+    });
 
-  Object.assign(round, {
-    clientSeed,
-    combinedSeed: result.combinedSeed,
-    pegMapHash: result.pegMapHash,
-    pathJson: result.path,
-    binIndex: result.binIndex,
-    rows: 12,
-    status: "STARTED",
-  });
+    round.clientSeed = clientSeed;
+    round.combinedSeed = result.combinedSeed;
+    round.pegMapHash = result.pegMapHash;
+    round.pathJson = result.path;
+    round.binIndex = result.binIndex;
+    round.rows = 12;
+    round.status = "STARTED";
+    round.betCents = betCents || 100;
 
-  res.json({
-    pegMapHash: result.pegMapHash,
-    rows: 12,
-  });
+    res.json({
+      pegMapHash: result.pegMapHash,
+      rows: 12,
+      binIndex: result.binIndex,
+    });
+  } catch (err) {
+    console.error("❌ Engine error:", err);
+    res.status(500).json({ error: "Engine failed", message: err.message });
+  }
 });
 
 // ✅ REVEAL
 app.post("/api/rounds/:id/reveal", (req, res) => {
+  console.log("👉 REVEAL ROUTE HIT for ID:", req.params.id);
+  
   const round = rounds[req.params.id];
 
   if (!round) {
@@ -156,16 +157,26 @@ app.post("/api/rounds/:id/reveal", (req, res) => {
     serverSeed: round.serverSeed,
   });
 });
-// ✅ GET ROUND
-app.get("/api/rounds/:id", async (req, res) => {
-  const round = await Round.findById(req.params.id);
+
+// ✅ GET ROUND (fixed for in-memory)
+app.get("/api/rounds/:id", (req, res) => {
+  console.log("👉 GET ROUTE HIT for ID:", req.params.id);
+  
+  const round = rounds[req.params.id];
+  
+  if (!round) {
+    return res.status(404).json({ error: "Round not found" });
+  }
+  
   res.json(round);
 });
-const PORT = process.env.PORT || 5000;
 
+// ✅ Root endpoint
 app.get("/", (req, res) => {
   res.send("Plinko Backend Running 🚀");
 });
-app.listen(PORT, () => {
+
+const PORT = process.env.PORT || 5000;
+app.listen(PORT, '0.0.0.0', () => {
   console.log(`🚀 Server running on port ${PORT}`);
 });
