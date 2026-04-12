@@ -20,15 +20,32 @@ mongoose.connection.once("open", () => {
   console.log("✅ MongoDB connected");
 });
 
+process.on("uncaughtException", (err) => {
+  console.error("🔥 UNCAUGHT EXCEPTION:", err);
+});
+
+process.on("unhandledRejection", (err) => {
+  console.error("🔥 UNHANDLED REJECTION:", err);
+});
+
 // ✅ COMMIT
 app.post("/api/rounds/commit", (req, res) => {
   try {
+    console.log("👉 COMMIT ROUTE HIT");
+
+    // 🔐 generate server seed
     const serverSeed = crypto.randomBytes(32).toString("hex");
+
+    // 🔢 nonce
     const nonce = Date.now().toString();
 
+    // 🔐 commit hash
     const commitHex = sha256(`${serverSeed}:${nonce}`);
-    const roundId = crypto.randomUUID();
 
+    // ✅ FIX: use randomBytes instead of randomUUID
+    const roundId = crypto.randomBytes(16).toString("hex");
+
+    // 🧠 store round (in-memory)
     rounds[roundId] = {
       serverSeed,
       nonce,
@@ -36,12 +53,28 @@ app.post("/api/rounds/commit", (req, res) => {
       status: "CREATED",
     };
 
-    res.json({ roundId, commitHex, nonce });
+    console.log("✅ ROUND CREATED:", roundId);
+
+    // ✅ send response
+    res.status(200).json({
+      roundId,
+      commitHex,
+      nonce,
+    });
 
   } catch (err) {
     console.error("❌ COMMIT ERROR:", err);
-    res.status(500).json({ error: err.message });
+
+    res.status(500).json({
+      error: "Commit failed",
+      message: err.message,
+    });
   }
+});
+
+app.get("/test", (req, res) => {
+  console.log("✅ TEST ROUTE HIT");
+  res.json({ message: "Server working" });
 });
 
 // ✅ VERIFY ENDPOINT

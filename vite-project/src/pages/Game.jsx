@@ -6,7 +6,7 @@ import axios from "axios";
 export default function Game() {
 
     const [column, setColumn] = useState(6);
-    const BASE_URL = import.meta.env.VITE_API_URL;
+    const BASE_URL = 'https://plinko-game-3.onrender.com/'
     
   const [round, setRound] = useState(null);
   console.log("Game rendering", round);
