@@ -2,9 +2,9 @@
 
 A fully functional Plinko game built with **React** (frontend) and **Node.js/Express** (backend), featuring a provably-fair commit-reveal RNG protocol, deterministic outcomes, and smooth animations.
 
-**Live Demo:** [Your Vercel Frontend URL]  
-**Backend API:** [Your Render Backend URL]  
-**Verifier Page:** [Your Vercel URL]/verify
+**Live Demo:** https://plinko-game-gd17-6x31prc1v-nikhiltiwari946-7388s-projects.vercel.app/  
+**Backend API:** https://plinko-game-3.onrender.com/  
+**Verifier Page:** https://plinko-game-gd17-git-main-nikhiltiwari946-7388s-projects.vercel.app/
 
 ---
 
