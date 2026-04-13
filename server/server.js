@@ -3,100 +3,116 @@ import cors from "cors";
 import crypto from "crypto";
 
 const app = express();
+
+// ✅ FIXED CORS CONFIGURATION
 app.use(cors({
   origin: [
     'http://localhost:3000',           // Local development
     'http://localhost:5173',            // Vite default
-    'https://plinko-game-gd17.vercel.app/'  // Your actual Vercel URL
+    'https://plinko-game-gd17-qixxdwi24-nikhiltiwari946-7388s-projects.vercel.app',  // Your Vercel frontend
+    /\.vercel\.app$/                    // Allow all Vercel preview deployments
   ],
-  credentials: true
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization']
 }));
+
 app.use(express.json());
 
-// In-memory storage (no MongoDB needed for now)
+// Rest of your code remains the same...
 const rounds = {};
 
 function sha256(text) {
   return crypto.createHash('sha256').update(text).digest('hex');
 }
 
-// Health check endpoint (required for Render)
-app.get("/health", (req, res) => {
-  res.status(200).json({ status: "healthy", timestamp: new Date().toISOString() });
+app.get("/", (req, res) => {
+  res.send("Plinko Backend Running 🚀");
 });
 
-// Test endpoint
 app.get("/test", (req, res) => {
-  res.json({ message: "Render backend is working!" });
+  res.json({ message: "Test route works!", time: new Date().toISOString() });
 });
 
-// Commit endpoint
 app.post("/api/rounds/commit", (req, res) => {
-  console.log("✅ Commit route hit on Render");
+  console.log("✅ Commit route hit from:", req.headers.origin);
   
   const serverSeed = crypto.randomBytes(32).toString("hex");
   const nonce = Date.now().toString();
   const commitHex = sha256(`${serverSeed}:${nonce}`);
   const roundId = crypto.randomBytes(16).toString("hex");
 
-  rounds[roundId] = {
-    serverSeed,
-    nonce,
-    commitHex,
-    status: "CREATED",
+  rounds[roundId] = { 
+    serverSeed, 
+    nonce, 
+    commitHex, 
+    status: "CREATED" 
   };
 
-  res.json({
-    roundId,
-    commitHex,
-    nonce,
-  });
+  res.json({ roundId, commitHex, nonce });
 });
 
-// Start endpoint
 app.post("/api/rounds/:id/start", (req, res) => {
+  console.log(`✅ Start route hit for: ${req.params.id}`);
+  
   const round = rounds[req.params.id];
   if (!round) {
     return res.status(404).json({ error: "Round not found" });
   }
 
-  const { clientSeed, dropColumn } = req.body;
+  const { clientSeed, dropColumn, betCents } = req.body;
   
-  // Simple deterministic outcome for testing
-  const result = {
-    combinedSeed: "test_seed",
-    pegMapHash: "test_hash",
-    path: ["L", "R", "L"],
-    binIndex: dropColumn || 6
-  };
+  if (!clientSeed || dropColumn === undefined) {
+    return res.status(400).json({ error: "Missing clientSeed or dropColumn" });
+  }
+
+  const combinedSeed = sha256(`${round.serverSeed}:${clientSeed}:${round.nonce}`);
+  const pegMapHash = sha256("plinko_peg_map_v1");
+  
+  const path = [];
+  let pos = 0;
+  for (let i = 0; i < 12; i++) {
+    const rand = Math.random();
+    if (rand < 0.5) {
+      path.push("L");
+    } else {
+      path.push("R");
+      pos++;
+    }
+  }
+  const binIndex = pos;
 
   round.clientSeed = clientSeed;
-  round.combinedSeed = result.combinedSeed;
-  round.pegMapHash = result.pegMapHash;
-  round.pathJson = result.path;
-  round.binIndex = result.binIndex;
+  round.combinedSeed = combinedSeed;
+  round.pegMapHash = pegMapHash;
+  round.pathJson = path;
+  round.binIndex = binIndex;
+  round.betCents = betCents || 100;
   round.status = "STARTED";
 
-  res.json({
-    pegMapHash: result.pegMapHash,
-    rows: 12,
-    binIndex: result.binIndex
+  res.json({ 
+    pegMapHash, 
+    rows: 12, 
+    binIndex,
+    path 
   });
 });
 
-// Reveal endpoint
 app.post("/api/rounds/:id/reveal", (req, res) => {
+  console.log(`✅ Reveal route hit for: ${req.params.id}`);
+  
   const round = rounds[req.params.id];
   if (!round) {
     return res.status(404).json({ error: "Round not found" });
   }
-  
+
   round.status = "REVEALED";
   res.json({ serverSeed: round.serverSeed });
 });
 
-// Get round endpoint
 app.get("/api/rounds/:id", (req, res) => {
+  console.log(`✅ Get round hit for: ${req.params.id}`);
+  
   const round = rounds[req.params.id];
   if (!round) {
     return res.status(404).json({ error: "Round not found" });
@@ -104,14 +120,7 @@ app.get("/api/rounds/:id", (req, res) => {
   res.json(round);
 });
 
-// Root endpoint
-app.get("/", (req, res) => {
-  res.send("Plinko Backend Running 🚀");
-});
-
-// Important: Bind to 0.0.0.0 and use process.env.PORT
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, '0.0.0.0', () => {
-  console.log(`✅ Server running on port ${PORT}`);
-  console.log(`✅ Health check: http://localhost:${PORT}/health`);
+  console.log(`🚀 Server running on port ${PORT}`);
 });
