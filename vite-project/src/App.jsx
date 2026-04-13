@@ -1,51 +1,56 @@
-import { HashRouter, Routes, Route, Link } from 'react-router-dom';
+import { useState } from 'react';
 import Game from './pages/Game';
 import Verify from './pages/Verify';
 
 function App() {
+  const [showVerifier, setShowVerifier] = useState(false);
+
   return (
-    <HashRouter>
-      <div>
-        {/* Navigation Bar */}
-        <nav style={{ 
-          padding: '10px', 
-          background: '#333', 
-          color: 'white',
-          display: 'flex',
-          gap: '10px'
-        }}>
-          <Link 
-            to="/" 
-            style={{ 
-              color: 'white', 
-              textDecoration: 'none',
-              padding: '8px 16px',
-              background: '#007bff',
-              borderRadius: '4px'
-            }}
-          >
-            🎮 Game
-          </Link>
-          <Link 
-            to="/verify" 
-            style={{ 
-              color: 'white', 
-              textDecoration: 'none',
-              padding: '8px 16px',
-              background: '#28a745',
-              borderRadius: '4px'
-            }}
-          >
-            🔐 Verifier
-          </Link>
-        </nav>
-        
-        <Routes>
-          <Route path="/" element={<Game />} />
-          <Route path="/verify" element={<Verify />} />
-        </Routes>
+    <div>
+      {/* Navigation Buttons */}
+      <div style={{ 
+        padding: '15px', 
+        background: '#1a1a2e', 
+        display: 'flex',
+        justifyContent: 'center',
+        gap: '20px',
+        borderBottom: '2px solid #16213e'
+      }}>
+        <button 
+          onClick={() => setShowVerifier(false)}
+          style={{
+            padding: '10px 30px',
+            fontSize: '18px',
+            background: !showVerifier ? '#e94560' : '#0f3460',
+            color: 'white',
+            border: 'none',
+            borderRadius: '8px',
+            cursor: 'pointer',
+            transition: 'all 0.3s'
+          }}
+        >
+          🎮 Play Plinko
+        </button>
+        <button 
+          onClick={() => setShowVerifier(true)}
+          style={{
+            padding: '10px 30px',
+            fontSize: '18px',
+            background: showVerifier ? '#e94560' : '#0f3460',
+            color: 'white',
+            border: 'none',
+            borderRadius: '8px',
+            cursor: 'pointer',
+            transition: 'all 0.3s'
+          }}
+        >
+          🔐 Verify Fairness
+        </button>
       </div>
-    </HashRouter>
+
+      {/* Page Content - No URL routing needed */}
+      {showVerifier ? <Verify /> : <Game />}
+    </div>
   );
 }
 
