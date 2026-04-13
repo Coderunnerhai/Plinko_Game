@@ -1,51 +1,51 @@
-import { useState } from 'react';
+import { HashRouter, Routes, Route, Link } from 'react-router-dom';
 import Game from './pages/Game';
 import Verify from './pages/Verify';
 
 function App() {
-  const [page, setPage] = useState('game');
-
   return (
-    <div>
-      {/* Navigation Bar */}
-      <div style={{ 
-        padding: '10px', 
-        background: '#333', 
-        color: 'white',
-        display: 'flex',
-        gap: '10px'
-      }}>
-        <button 
-          onClick={() => setPage('game')}
-          style={{
-            padding: '8px 16px',
-            background: page === 'game' ? '#007bff' : '#555',
-            color: 'white',
-            border: 'none',
-            cursor: 'pointer',
-            borderRadius: '4px'
-          }}
-        >
-          🎮 Game
-        </button>
-        <button 
-          onClick={() => setPage('verify')}
-          style={{
-            padding: '8px 16px',
-            background: page === 'verify' ? '#007bff' : '#555',
-            color: 'white',
-            border: 'none',
-            cursor: 'pointer',
-            borderRadius: '4px'
-          }}
-        >
-          🔐 Verifier
-        </button>
+    <HashRouter>
+      <div>
+        {/* Navigation Bar */}
+        <nav style={{ 
+          padding: '10px', 
+          background: '#333', 
+          color: 'white',
+          display: 'flex',
+          gap: '10px'
+        }}>
+          <Link 
+            to="/" 
+            style={{ 
+              color: 'white', 
+              textDecoration: 'none',
+              padding: '8px 16px',
+              background: '#007bff',
+              borderRadius: '4px'
+            }}
+          >
+            🎮 Game
+          </Link>
+          <Link 
+            to="/verify" 
+            style={{ 
+              color: 'white', 
+              textDecoration: 'none',
+              padding: '8px 16px',
+              background: '#28a745',
+              borderRadius: '4px'
+            }}
+          >
+            🔐 Verifier
+          </Link>
+        </nav>
+        
+        <Routes>
+          <Route path="/" element={<Game />} />
+          <Route path="/verify" element={<Verify />} />
+        </Routes>
       </div>
-
-      {/* Page Content */}
-      {page === 'game' ? <Game /> : <Verify />}
-    </div>
+    </HashRouter>
   );
 }
 

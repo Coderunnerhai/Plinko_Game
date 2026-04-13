@@ -13,7 +13,7 @@ export default function Verify() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
-  // ✅ Use your deployed Render backend
+  // ✅ Use your Render backend URL
   const BASE_URL = "https://plinko-game-3.onrender.com";
 
   const verify = async () => {
