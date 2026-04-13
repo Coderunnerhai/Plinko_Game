@@ -3,7 +3,14 @@ import cors from "cors";
 import crypto from "crypto";
 
 const app = express();
-app.use(cors());
+app.use(cors({
+  origin: [
+    'http://localhost:3000',           // Local development
+    'http://localhost:5173',            // Vite default
+    'https://plinko-game-gd17.vercel.app/'  // Your actual Vercel URL
+  ],
+  credentials: true
+}));
 app.use(express.json());
 
 // In-memory storage (no MongoDB needed for now)
