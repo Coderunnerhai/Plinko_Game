@@ -13,8 +13,8 @@ export default function Verify() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
-  // ✅ Use environment variable or deployed backend URL
-  const BASE_URL = import.meta.env.VITE_API_URL || "https://plinko-game-3.onrender.com";
+  // ✅ Use your deployed Render backend
+  const BASE_URL = "https://plinko-game-3.onrender.com";
 
   const verify = async () => {
     setLoading(true);
@@ -22,12 +22,17 @@ export default function Verify() {
     
     try {
       const res = await axios.get(`${BASE_URL}/api/verify`, {
-        params: form,
+        params: {
+          serverSeed: form.serverSeed,
+          clientSeed: form.clientSeed,
+          nonce: form.nonce,
+          dropColumn: Number(form.dropColumn)
+        },
       });
       setResult(res.data);
     } catch (err) {
-      console.error(err);
-      setError(err.response?.data?.error || "Verification failed");
+      console.error("Verification error:", err);
+      setError(err.response?.data?.error || err.message || "Verification failed");
     } finally {
       setLoading(false);
     }
@@ -38,49 +43,55 @@ export default function Verify() {
       <h2>🔐 Verify Round Fairness</h2>
       <p>Enter the server seed, client seed, nonce, and drop column to verify a round.</p>
 
-      <input
-        placeholder="serverSeed"
-        value={form.serverSeed}
-        onChange={(e) => setForm({ ...form, serverSeed: e.target.value })}
-        style={{ display: 'block', margin: '10px 0', padding: '8px', width: '300px' }}
-      />
+      <div style={{ marginBottom: 10 }}>
+        <input
+          placeholder="serverSeed"
+          value={form.serverSeed}
+          onChange={(e) => setForm({ ...form, serverSeed: e.target.value })}
+          style={{ display: 'block', margin: '10px 0', padding: '8px', width: '300px' }}
+        />
 
-      <input
-        placeholder="clientSeed"
-        value={form.clientSeed}
-        onChange={(e) => setForm({ ...form, clientSeed: e.target.value })}
-        style={{ display: 'block', margin: '10px 0', padding: '8px', width: '300px' }}
-      />
+        <input
+          placeholder="clientSeed"
+          value={form.clientSeed}
+          onChange={(e) => setForm({ ...form, clientSeed: e.target.value })}
+          style={{ display: 'block', margin: '10px 0', padding: '8px', width: '300px' }}
+        />
 
-      <input
-        placeholder="nonce"
-        value={form.nonce}
-        onChange={(e) => setForm({ ...form, nonce: e.target.value })}
-        style={{ display: 'block', margin: '10px 0', padding: '8px', width: '300px' }}
-      />
+        <input
+          placeholder="nonce"
+          value={form.nonce}
+          onChange={(e) => setForm({ ...form, nonce: e.target.value })}
+          style={{ display: 'block', margin: '10px 0', padding: '8px', width: '300px' }}
+        />
 
-      <input
-        type="number"
-        placeholder="dropColumn (0-12)"
-        value={form.dropColumn}
-        onChange={(e) => setForm({ ...form, dropColumn: Number(e.target.value) })}
-        style={{ display: 'block', margin: '10px 0', padding: '8px', width: '300px' }}
-      />
+        <input
+          type="number"
+          placeholder="dropColumn (0-12)"
+          value={form.dropColumn}
+          onChange={(e) => setForm({ ...form, dropColumn: e.target.value })}
+          style={{ display: 'block', margin: '10px 0', padding: '8px', width: '300px' }}
+        />
 
-      <button onClick={verify} disabled={loading} style={{ padding: '10px 20px', cursor: 'pointer' }}>
-        {loading ? "Verifying..." : "Verify Round"}
-      </button>
+        <button 
+          onClick={verify} 
+          disabled={loading}
+          style={{ padding: '10px 20px', cursor: 'pointer' }}
+        >
+          {loading ? "Verifying..." : "Verify Round"}
+        </button>
+      </div>
 
       {error && (
-        <div style={{ color: 'red', marginTop: '20px' }}>
-          Error: {error}
+        <div style={{ color: 'red', marginTop: 20, padding: 10, background: '#ffeeee', borderRadius: 5 }}>
+          ❌ Error: {error}
         </div>
       )}
 
       {result && (
-        <div style={{ marginTop: '20px' }}>
-          <h3>Verification Result:</h3>
-          <pre style={{ background: '#f0f0f0', padding: '15px', borderRadius: '5px', overflow: 'auto' }}>
+        <div style={{ marginTop: 20 }}>
+          <h3>✅ Verification Result:</h3>
+          <pre style={{ background: '#f0f0f0', padding: 15, borderRadius: 5, overflow: 'auto' }}>
             {JSON.stringify(result, null, 2)}
           </pre>
         </div>
