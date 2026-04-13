@@ -1,182 +1,110 @@
 import express from "express";
-import mongoose from "mongoose";
-import dotenv from "dotenv";
 import cors from "cors";
 import crypto from "crypto";
-import { sha256 } from "./hash.js";
-import { runEngine } from "./engine.js";
-import Round from "./models/Round.js";
-
-dotenv.config();
 
 const app = express();
-const rounds = {}; // 👈 ADD THIS - in-memory storage
-
 app.use(cors());
 app.use(express.json());
 
-// Only connect to MongoDB if you're using it
-if (process.env.MONGO_URI) {
-  mongoose.connect(process.env.MONGO_URI);
-  mongoose.connection.once("open", () => {
-    console.log("✅ MongoDB connected");
-  });
+// In-memory storage (no MongoDB needed for now)
+const rounds = {};
+
+function sha256(text) {
+  return crypto.createHash('sha256').update(text).digest('hex');
 }
 
-process.on("uncaughtException", (err) => {
-  console.error("🔥 UNCAUGHT EXCEPTION:", err);
+// Health check endpoint (required for Render)
+app.get("/health", (req, res) => {
+  res.status(200).json({ status: "healthy", timestamp: new Date().toISOString() });
 });
 
-process.on("unhandledRejection", (err) => {
-  console.error("🔥 UNHANDLED REJECTION:", err);
-});
-
-// ✅ TEST ROUTE (put this first for quick testing)
+// Test endpoint
 app.get("/test", (req, res) => {
-  console.log("✅ TEST ROUTE HIT");
-  res.json({ message: "Server working", routes: ["/api/rounds/commit", "/api/verify", "/api/rounds/:id/start"] });
+  res.json({ message: "Render backend is working!" });
 });
 
-// ✅ COMMIT
+// Commit endpoint
 app.post("/api/rounds/commit", (req, res) => {
-  try {
-    console.log("👉 COMMIT ROUTE HIT");
-    
-    const serverSeed = crypto.randomBytes(32).toString("hex");
-    const nonce = Date.now().toString();
-    const commitHex = sha256(`${serverSeed}:${nonce}`);
-    const roundId = crypto.randomBytes(16).toString("hex");
-
-    rounds[roundId] = {
-      serverSeed,
-      nonce,
-      commitHex,
-      status: "CREATED",
-    };
-
-    console.log("✅ ROUND CREATED:", roundId);
-    console.log("📦 Current rounds:", Object.keys(rounds));
-
-    res.status(200).json({
-      roundId,
-      commitHex,
-      nonce,
-    });
-
-  } catch (err) {
-    console.error("❌ COMMIT ERROR:", err);
-    res.status(500).json({
-      error: "Commit failed",
-      message: err.message,
-    });
-  }
-});
-
-// ✅ VERIFY ENDPOINT
-app.get("/api/verify", (req, res) => {
-  const { serverSeed, clientSeed, nonce, dropColumn } = req.query;
-
-  if (!serverSeed || !clientSeed || !nonce || dropColumn === undefined) {
-    return res.status(400).json({ error: "Missing params" });
-  }
-
+  console.log("✅ Commit route hit on Render");
+  
+  const serverSeed = crypto.randomBytes(32).toString("hex");
+  const nonce = Date.now().toString();
   const commitHex = sha256(`${serverSeed}:${nonce}`);
-  const result = runEngine({
+  const roundId = crypto.randomBytes(16).toString("hex");
+
+  rounds[roundId] = {
     serverSeed,
-    clientSeed,
     nonce,
-    dropColumn: Number(dropColumn),
-  });
-
-  res.json({
     commitHex,
-    combinedSeed: result.combinedSeed,
-    pegMapHash: result.pegMapHash,
-    binIndex: result.binIndex,
-  });
-});
-
-// ✅ START
-app.post("/api/rounds/:id/start", (req, res) => {
-  console.log("👉 START ROUTE HIT for ID:", req.params.id);
-  
-  const round = rounds[req.params.id];
-
-  if (!round) {
-    console.log("❌ Round not found. Available:", Object.keys(rounds));
-    return res.status(404).json({ error: "Round not found" });
-  }
-
-  const { clientSeed, dropColumn, betCents } = req.body;
-
-  if (!clientSeed || dropColumn === undefined) {
-    return res.status(400).json({ error: "Missing clientSeed or dropColumn" });
-  }
-
-  try {
-    const result = runEngine({
-      serverSeed: round.serverSeed,
-      clientSeed,
-      nonce: round.nonce,
-      dropColumn,
-    });
-
-    round.clientSeed = clientSeed;
-    round.combinedSeed = result.combinedSeed;
-    round.pegMapHash = result.pegMapHash;
-    round.pathJson = result.path;
-    round.binIndex = result.binIndex;
-    round.rows = 12;
-    round.status = "STARTED";
-    round.betCents = betCents || 100;
-
-    res.json({
-      pegMapHash: result.pegMapHash,
-      rows: 12,
-      binIndex: result.binIndex,
-    });
-  } catch (err) {
-    console.error("❌ Engine error:", err);
-    res.status(500).json({ error: "Engine failed", message: err.message });
-  }
-});
-
-// ✅ REVEAL
-app.post("/api/rounds/:id/reveal", (req, res) => {
-  console.log("👉 REVEAL ROUTE HIT for ID:", req.params.id);
-  
-  const round = rounds[req.params.id];
-
-  if (!round) {
-    return res.status(404).json({ error: "Round not found" });
-  }
-
-  round.status = "REVEALED";
+    status: "CREATED",
+  };
 
   res.json({
-    serverSeed: round.serverSeed,
+    roundId,
+    commitHex,
+    nonce,
   });
 });
 
-// ✅ GET ROUND (fixed for in-memory)
-app.get("/api/rounds/:id", (req, res) => {
-  console.log("👉 GET ROUTE HIT for ID:", req.params.id);
-  
+// Start endpoint
+app.post("/api/rounds/:id/start", (req, res) => {
   const round = rounds[req.params.id];
+  if (!round) {
+    return res.status(404).json({ error: "Round not found" });
+  }
+
+  const { clientSeed, dropColumn } = req.body;
   
+  // Simple deterministic outcome for testing
+  const result = {
+    combinedSeed: "test_seed",
+    pegMapHash: "test_hash",
+    path: ["L", "R", "L"],
+    binIndex: dropColumn || 6
+  };
+
+  round.clientSeed = clientSeed;
+  round.combinedSeed = result.combinedSeed;
+  round.pegMapHash = result.pegMapHash;
+  round.pathJson = result.path;
+  round.binIndex = result.binIndex;
+  round.status = "STARTED";
+
+  res.json({
+    pegMapHash: result.pegMapHash,
+    rows: 12,
+    binIndex: result.binIndex
+  });
+});
+
+// Reveal endpoint
+app.post("/api/rounds/:id/reveal", (req, res) => {
+  const round = rounds[req.params.id];
   if (!round) {
     return res.status(404).json({ error: "Round not found" });
   }
   
+  round.status = "REVEALED";
+  res.json({ serverSeed: round.serverSeed });
+});
+
+// Get round endpoint
+app.get("/api/rounds/:id", (req, res) => {
+  const round = rounds[req.params.id];
+  if (!round) {
+    return res.status(404).json({ error: "Round not found" });
+  }
   res.json(round);
 });
 
-// ✅ Root endpoint
+// Root endpoint
 app.get("/", (req, res) => {
   res.send("Plinko Backend Running 🚀");
 });
 
+// Important: Bind to 0.0.0.0 and use process.env.PORT
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, '0.0.0.0', () => {
-  console.log(`🚀 Server running on port ${PORT}`);
+  console.log(`✅ Server running on port ${PORT}`);
+  console.log(`✅ Health check: http://localhost:${PORT}/health`);
 });
