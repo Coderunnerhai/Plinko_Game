@@ -3,53 +3,51 @@ import Game from './pages/Game';
 import Verify from './pages/Verify';
 
 function App() {
-  const [showVerifier, setShowVerifier] = useState(false);
+  const [showGame, setShowGame] = useState(true);
 
   return (
     <div>
-      {/* Navigation Buttons */}
+      {/* Simple toggle buttons */}
       <div style={{ 
-        padding: '15px', 
-        background: '#1a1a2e', 
-        display: 'flex',
-        justifyContent: 'center',
-        gap: '20px',
-        borderBottom: '2px solid #16213e'
+        textAlign: 'center', 
+        padding: '20px',
+        background: '#282c34',
+        borderBottom: '2px solid #61dafb'
       }}>
         <button 
-          onClick={() => setShowVerifier(false)}
+          onClick={() => setShowGame(true)}
           style={{
-            padding: '10px 30px',
-            fontSize: '18px',
-            background: !showVerifier ? '#e94560' : '#0f3460',
-            color: 'white',
+            margin: '0 10px',
+            padding: '10px 20px',
+            background: showGame ? '#61dafb' : '#444',
+            color: showGame ? '#282c34' : 'white',
             border: 'none',
-            borderRadius: '8px',
+            borderRadius: '5px',
             cursor: 'pointer',
-            transition: 'all 0.3s'
+            fontSize: '16px'
           }}
         >
-          🎮 Play Plinko
+          🎮 Game
         </button>
         <button 
-          onClick={() => setShowVerifier(true)}
+          onClick={() => setShowGame(false)}
           style={{
-            padding: '10px 30px',
-            fontSize: '18px',
-            background: showVerifier ? '#e94560' : '#0f3460',
-            color: 'white',
+            margin: '0 10px',
+            padding: '10px 20px',
+            background: !showGame ? '#61dafb' : '#444',
+            color: !showGame ? '#282c34' : 'white',
             border: 'none',
-            borderRadius: '8px',
+            borderRadius: '5px',
             cursor: 'pointer',
-            transition: 'all 0.3s'
+            fontSize: '16px'
           }}
         >
-          🔐 Verify Fairness
+          🔐 Verifier
         </button>
       </div>
 
-      {/* Page Content - No URL routing needed */}
-      {showVerifier ? <Verify /> : <Game />}
+      {/* Show either Game or Verifier */}
+      {showGame ? <Game /> : <Verify />}
     </div>
   );
 }
